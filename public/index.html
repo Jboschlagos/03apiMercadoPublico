@@ -132,7 +132,7 @@
             tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Sin resultados para hoy</td></tr>`;
             return;
           }
-
+          document.getElementById("btnExcel").style.display = "inline-block";
           soloPublicadas.forEach((l) => {
             const estado = estados[l.CodigoEstado] || {
               texto: l.CodigoEstado,
@@ -165,7 +165,36 @@
           cargarLicitaciones(btn.dataset.perfil);
         });
       });
+      // Función para descargar Excel
+      const descargarExcel = (perfil) => {
+        const filas = [];
 
+        document.querySelectorAll("#tablaLicitaciones tr").forEach((fila) => {
+          const celdas = fila.querySelectorAll("td");
+          if (celdas.length === 4) {
+            filas.push({
+              Código: celdas[0].textContent.trim(),
+              Nombre: celdas[1].textContent.trim(),
+              Estado: celdas[2].textContent.trim(),
+              FechaCierre: celdas[3].textContent.trim(),
+            });
+          }
+        });
+
+        const hoja = XLSX.utils.json_to_sheet(filas);
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, "Licitaciones");
+        XLSX.writeFile(
+          libro,
+          `licitaciones_${perfil}_${new Date().toLocaleDateString("es-CL")}.xlsx`,
+        );
+      };
+
+      document.getElementById("btnExcel").addEventListener("click", () => {
+        const perfilActivo = document.querySelector("[data-perfil].active")
+          .dataset.perfil;
+        descargarExcel(perfilActivo);
+      });
       // Carga inicial con perfil jorge
       cargarLicitaciones("jorge");
     </script>
