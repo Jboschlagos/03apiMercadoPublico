@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ExploraMP — Licitaciones por Perfil</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+
+      #loading {
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="container py-4">
+      <header class="mb-4">
+        <h1 class="h3"><i class="bi bi-search"></i> ExploraMP</h1>
+        <p class="text-muted">Licitaciones del día desde Mercado Público</p>
+      </header>
+
+      <!-- Tabs de perfiles -->
+      <nav>
+        <ul class="nav nav-tabs mb-4" id="perfilesTabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-perfil="jorge">
+              <i class="bi bi-code-slash"></i> Desarrollo Web
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-perfil="esposa">
+              <i class="bi bi-music-note-beamed"></i> Artes Escénicas
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-perfil="mineria_ia">
+              <i class="bi bi-cpu"></i> Minería e IA
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Indicador de carga -->
+      <output id="loading" class="d-block text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Consultando licitaciones...</p>
+      </output>
+
+      <!-- Resultado -->
+      <section id="resultado">
+        <p id="totalResultados" class="text-muted mb-3"></p>
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered bg-white">
+            <thead class="table-dark">
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Fecha Cierre</th>
+              </tr>
+            </thead>
+            <tbody id="tablaLicitaciones">
+              <tr>
+                <td colspan="4" class="text-center text-muted">
+                  Selecciona un perfil para ver las licitaciones
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const BASE_URL = "http://localhost:3000/api/licitaciones";
+
+      const estados = {
+        5: { texto: "Publicada", clase: "success" },
+        6: { texto: "Cerrada", clase: "secondary" },
+        7: { texto: "Desierta", clase: "warning" },
+        8: { texto: "Adjudicada", clase: "primary" },
+        15: { texto: "Revocada", clase: "danger" },
+      };
+
+      const formatearFecha = (fecha) => {
+        if (!fecha) return "—";
+        return new Date(fecha).toLocaleDateString("es-CL", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      };
+
+      const cargarLicitaciones = async (perfil) => {
+        document.getElementById("loading").style.display = "block";
+        document.getElementById("tablaLicitaciones").innerHTML = "";
+        document.getElementById("totalResultados").textContent = "";
+
+        try {
+          const respuesta = await fetch(`${BASE_URL}/${perfil}`);
+          const datos = await respuesta.json();
+
+          const soloPublicadas = datos.licitaciones.filter(
+            (l) => l.CodigoEstado === 5,
+          );
+
+          document.getElementById("totalResultados").textContent =
+            `${soloPublicadas.length} licitaciones publicadas para el perfil "${perfil}"`;
+
+          const tbody = document.getElementById("tablaLicitaciones");
+
+          if (soloPublicadas.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Sin resultados para hoy</td></tr>`;
+            return;
+          }
+
+          soloPublicadas.forEach((l) => {
+            const estado = estados[l.CodigoEstado] || {
+              texto: l.CodigoEstado,
+              clase: "light",
+            };
+            tbody.innerHTML += `
+          <tr>
+            <td><small>${l.CodigoExterno}</small></td>
+            <td>${l.Nombre}</td>
+            <td><span class="badge bg-${estado.clase}">${estado.texto}</span></td>
+            <td>${formatearFecha(l.FechaCierre)}</td>
+          </tr>
+        `;
+          });
+        } catch (error) {
+          document.getElementById("tablaLicitaciones").innerHTML =
+            `<tr><td colspan="4" class="text-danger text-center">Error al cargar licitaciones</td></tr>`;
+        } finally {
+          document.getElementById("loading").style.display = "none";
+        }
+      };
+
+      // Eventos de los tabs
+      document.querySelectorAll("[data-perfil]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll("[data-perfil]")
+            .forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          cargarLicitaciones(btn.dataset.perfil);
+        });
+      });
+
+      // Carga inicial con perfil jorge
+      cargarLicitaciones("jorge");
+    </script>
+  </body>
+</html>
